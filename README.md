@@ -12,7 +12,7 @@ Both use the same prompt, so any difference in the answers comes from which chun
 | File | Contents |
 |------|----------|
 | `rag_assignment.ipynb` | The full pipeline with outputs: chunking, both pipelines, failure-mode queries, rank shifts, latency |
-| `report.md` | Results tables and notes for the four report questions |
+| `report.tex`, `report.pdf` | The written report (source and compiled PDF) |
 | `doc/laws_of_chess.pdf` | Source document |
 | `llm_cache.json` | Cached Gemini answers, so the notebook can be rerun without spending API quota |
 | `requirements.txt` | Python dependencies |
@@ -43,7 +43,7 @@ With `llm_cache.json` present, the stored answers are reused and no Gemini calls
 - **Where it did not help:** on a synonym-heavy query ("absent... forfeited" against "late... default time") the cross-encoder moved the right chunk from 5 to 9. On the negation queries the baseline already ranked the right chunk first.
 - **Latency:** baseline retrieval about 5 ms, re-ranking adds about 27 ms, the LLM call about 1.1 s. Running the cross-encoder over all 121 chunks took about 400 ms.
 
-See `report.md` for the full tables.
+See `report.pdf` for the full tables and analysis.
 
 ## Limitations
 
