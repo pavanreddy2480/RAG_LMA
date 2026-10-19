@@ -32,41 +32,43 @@ A bi-encoder encodes the query and each chunk separately into one vector each, a
 A cross-encoder takes the query and the chunk together as one input, so self-attention runs across all query tokens and chunk tokens jointly, and it outputs one relevance score. It can therefore match specific words in the query to specific words in the chunk (for example ``always'' in the query against ``cannot win\ldots draw'' in the chunk). Nothing can be precomputed, because the score depends on the query.
 
 \section{Qualitative and Rank Shift Analysis}
-For each query I marked the ``gold'' chunk by a phrase from the clause that really answers it, found by reading the rulebook before running the models. Table~\ref{tab:ranks} gives the rank of that chunk before and after re-ranking.
+For each query I marked the ``gold'' chunk by a phrase from the clause that really answers it, found by reading the rulebook before running the models. Table~\ref{tab:ranks} gives the rank of that chunk among the 10 candidates before and after re-ranking.
+
+\textbf{How the queries were chosen.} I wrote more than 40 candidate queries and checked, using retrieval only, where the gold chunk landed. The queries below are the ones that showed the behaviour I wanted to test, plus a few controls. So this is a set of examples chosen to expose failures, not a fair estimate of how often re-ranking helps. Many negation and exception queries I tried were already answered correctly by the baseline (gold chunk at rank 1), and these are not listed.
 
 \begin{table}[h]
 \centering\small
-\begin{tabular}{@{}p{6.2cm}p{2.3cm}cc@{}}
+\begin{tabular}{@{}p{6.4cm}p{3.1cm}ccc@{}}
 \toprule
-Query & Gold chunk & Bi-enc.\ rank & CE rank \\
+Query (type) & Gold chunk & Bi & CE & Top-3 before $\to$ after \\
 \midrule
-Extra minutes when the arbiter rejects a draw claim (failure query 1) & 63 & 4 & 1 \\
-If my opponent's time runs out, do I always win? (failure query 2, exception) & 66 (and 65) & 10 & 1 \\
-How long can a player be absent before the game is forfeited? (synonym / keyword trap) & 33 (and 32) & 5 & 9 \\
-Is a player allowed to withdraw a draw claim? (negation) & 59 & 1 & 1 \\
-Is it prohibited to write the moves in advance? (negation) & 47 & 1 & 1 \\
-What happens on a third illegal move? (control) & 45 & 1 & 1 \\
-Rules about mobile phones & 65, 72 & 1 & 1 \\
+Extra minutes when the arbiter rejects a draw claim (buried chunk) & 63 & 4 & 1 & No $\to$ Yes \\
+If my opponent's time runs out, do I always win? (exception) & 66 (and 65) & 10 & 1 & No $\to$ Yes \\
+Does an illegal move always cost the player? (exception) & 45 & 5 & 3 & No $\to$ Yes \\
+Can I still claim a draw after touching a piece? (negation) & 58 & 9 & 1 & No $\to$ Yes \\
+Can the scoresheet be used for personal notes? (negation) & 66 & 6 & 1 & No $\to$ Yes \\
+What can the referee do to a player who breaks the rules? (synonym) & 69 & 9 & 2 & No $\to$ Yes \\
+How long can a player be absent before the game is forfeited? (synonym) & 33 (and 32) & 5 & 9 & No $\to$ No \\
+Third illegal move (control) & 45 & 1 & 1 & Yes $\to$ Yes \\
+Withdraw a draw claim (negation control) & 59 & 1 & 1 & Yes $\to$ Yes \\
 \bottomrule
 \end{tabular}
-\caption{Rank of the gold chunk among the 10 candidates. The best-ranked gold chunk is shown where more than one qualifies.}
+\caption{Rank of the gold chunk before (bi-encoder) and after (cross-encoder) re-ranking.}
 \label{tab:ranks}
 \end{table}
 
-\textbf{Failure query 1 (extra minutes).} Chunk 63, which holds the exact sentence ``if the arbiter has rejected the claim, the opponent shall be awarded two extra minutes'', moved from rank 4 to rank 1. The baseline top-3 was chunks 62, 61, 59 and the re-ranked top-3 was 63, 62, 61. Both answers were correct (``two extra minutes''), because chunk 62 contains a similar clause about postponed decisions. So the rank improved but the baseline did not fail here.
+\textbf{Exceptions and corner cases.} For ``do I always win?'' the clause with the exception (``if the opponent cannot win the game by any series of legal moves, his score shall be a draw'') sat at rank 10, so the baseline never gave it to the LLM. Answer 1 was \emph{``Not found in the provided context''}; the cross-encoder moved the chunk to rank 1 and Answer 2 stated the draw exception correctly. For ``does an illegal move always cost the player?'' the baseline top-3 (chunks 25, 22, 78) did not contain the clause on the third illegal move (chunk 45, rank 5), and Answer 1 was again ``Not found''. After re-ranking chunk 45 was third, and Answer 2 correctly said that the first two illegal moves only give the opponent two extra minutes, the game is lost on the third, and a draw applies if the opponent cannot checkmate.
 
-\textbf{Failure query 2 (exception).} The chunk with the exception sat at rank 10 and was not given to the LLM in the baseline. The cross-encoder moved it to rank 1. Answer 1 was \emph{``Not found in the provided context''} (the prompt tells the model to say this when the context lacks the answer, so it refused instead of guessing). Answer 2 was: ``If the opponent cannot win the game by any series of legal moves, the score shall be a draw.'' This is the clearest case where the critical chunk sitting outside the top-3 made the baseline omit the essential clause. It is the one query where the final answer changed for the better.
+\textbf{Negation and constraints.} ``Can I still claim a draw after touching a piece?'' needs the clause saying the player \emph{loses} the right to claim (chunk 58). The bi-encoder ranked it 9th, behind chunks about claiming draws in general, and Answer 1 was ``Not found''. The cross-encoder put it first, and Answer 2 said that touching a piece without having claimed the draw loses the right to claim on that move. For the scoresheet query the gold chunk also moved from 6 to 1, but both answers were ``Not found'', so the LLM did not extract the rule even with the right chunk present. This shows that a better ranking does not guarantee a better answer. Several other negation queries (for example ``not allowed to withdraw a claim'', used as a control above) were already ranked first by the bi-encoder, so the bi-encoder does not always blur negation.
 
-\textbf{Keyword trap.} Re-ranking did not help here. The clause on default time (chunk 33) moved from rank 5 to 9. The query uses ``absent'' and ``forfeited'', while the rule says ``arrives late'' and ``default time''. Both pipelines retrieved the adjourned-game rule (``more than one hour late'') and both answers described that rule. I think the MS-MARCO cross-encoder preferred chunks with words like ``late'' and ``loses'', but I did not test this further.
+\textbf{Keyword trap / synonyms.} For ``referee'' the rulebook says ``arbiter'', so the penalty list (chunk 69) was ranked 9th by the bi-encoder and 2nd by the cross-encoder. Both answers listed the penalties, but Answer 2 also added the penalty for persistent refusal to comply, which Answer 1 left out. The opposite happened for ``absent\ldots forfeited'': the default-time clause (chunk 33) fell from rank 5 to 9 and both answers described the adjourned-game rule (``more than one hour late'') instead. I think the MS-MARCO cross-encoder preferred chunks containing words like ``late'' and ``loses'', but I did not test this further.
 
-\textbf{Negation queries.} The bi-encoder already ranked the right chunk first for both ``not allowed to withdraw'' and ``prohibited to write in advance'', and both answers were correct and nearly identical. So on this document I could not show a negation failure of the baseline.
+\textbf{Buried chunk.} For ``extra minutes'' the chunk with the exact sentence moved from rank 4 to 1 (baseline top-3 was 62, 61, 59; re-ranked 63, 62, 61). Both answers were correct (``two extra minutes''), because chunk 62 contains a similar clause about postponed decisions. So the ranking improved, but the baseline did not fail.
 
-\textbf{Other observations.} For the mobile-phone query the gold chunks stayed at ranks 1 and 2, but the third chunk changed: the baseline kept chunk 66 (which has the ``unless the opponent cannot win, the score is a draw'' clause) and the re-ranker replaced it with chunk 2. Answer 1 therefore included the draw exception and Answer 2 did not, so here the baseline answer was slightly more complete. Re-ranking is not always better.
-
-Overall: in 2 of 7 queries the gold chunk was promoted into the top-3 (ranks 4$\to$1 and 10$\to$1). Only in one of these did the answer change. In one query re-ranking made things worse, and in the rest nothing changed. With 7 queries on one document this is an illustration, not a benchmark.
+\textbf{Summary.} The gold chunk entered the top-3 for 6 of 9 queries. In 3 of these (``do I always win'', ``illegal move'', ``claim a draw after touching'') the baseline answered ``Not found'' and the re-ranked pipeline answered correctly. In the synonym query the re-ranked answer was slightly more complete. In one query (``absent'') re-ranking made retrieval worse, and in the controls nothing changed. No baseline answer contained an invented rule: with the instruction to answer only from the context, the baseline failed by omission (``Not found'') rather than by hallucination. Because the queries were selected as described above, these counts are not a benchmark.
 
 \section{Latency Profiling}
-Retrieval timings are means over 7 queries with 10 repeats each, on a laptop, with 10 candidates. The LLM time is one uncached API call, since it is identical for both pipelines and the free API quota is small.
+Retrieval timings are means over the 9 queries with 10 repeats each, on a laptop, with 10 candidates. The LLM time is one uncached API call, since it is identical for both pipelines and the free API quota is small.
 
 \begin{table}[h]
 \centering\small
@@ -74,21 +76,21 @@ Retrieval timings are means over 7 queries with 10 repeats each, on a laptop, wi
 \toprule
 Stage & Time \\
 \midrule
-Pipeline 1: bi-encoder retrieval (embed query + FAISS top-10) & 5.0 ms \\
-Re-ranking step (10 cross-encoder pairs) & 27.4 ms \\
-Pipeline 2 retrieval total (bi-encoder + cross-encoder) & 32.4 ms (6.5$\times$ baseline) \\
-LLM generation (same in both pipelines) & about 1.1 s \\
+Pipeline 1: bi-encoder retrieval (embed query + FAISS top-10) & 8.1 ms \\
+Re-ranking step (10 cross-encoder pairs) & 28.2 ms \\
+Pipeline 2 retrieval total (bi-encoder + cross-encoder) & 36.3 ms (4.5$\times$ baseline) \\
+LLM generation (same in both pipelines) & about 0.7 s \\
 \midrule
-Cross-encoder on all 121 chunks, one query (for comparison) & 398 ms \\
+Cross-encoder on all 121 chunks, one query (for comparison) & 381 ms \\
 \bottomrule
 \end{tabular}
 \caption{Runtime of the two pipelines.}
 \end{table}
 
-Re-ranking makes retrieval about 6.5 times slower, but the absolute cost is about 27 ms, which is small next to the LLM call.
+Re-ranking makes retrieval about 4.5 times slower, but the absolute cost is about 28 ms, which is small next to the LLM call.
 
 \section{Scaling Question}
-A cross-encoder must run a full transformer pass for every (query, chunk) pair, and the result cannot be cached because it depends on the query. Running it over the whole collection costs a number of passes proportional to the number of chunks for every query. Here 121 chunks already cost 398 ms, about 15 times the cost of scoring 10 chunks, and a collection of millions of chunks would take minutes per query.
+A cross-encoder must run a full transformer pass for every (query, chunk) pair, and the result cannot be cached because it depends on the query. Running it over the whole collection costs a number of passes proportional to the number of chunks for every query. Here 121 chunks already cost 381 ms, about 14 times the cost of scoring 10 chunks, and a collection of millions of chunks would take minutes per query.
 
 A bi-encoder avoids this: chunk vectors are computed once offline, and a query costs one encoding plus a fast nearest-neighbour search. So the first stage uses the cheap model to get a short list with good recall, and the expensive cross-encoder only refines that short list. The limit of this design is that if the right chunk is not in the top-10, the re-ranker cannot recover it.
 

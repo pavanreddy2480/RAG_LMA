@@ -38,10 +38,12 @@ With `llm_cache.json` present, the stored answers are reused and no Gemini calls
 
 ## Results in brief
 
-- **Rank shifts:** for the query on extra minutes after a rejected draw claim, the right chunk moved from rank 4 to 1. For "if my opponent's time runs out, do I always win?", the chunk with the exception moved from rank 10 to 1.
-- **Answers:** in the second case the baseline answered "Not found in the provided context", while the re-ranked pipeline gave the correct draw exception. In the first case both answers were correct.
-- **Where it did not help:** on a synonym-heavy query ("absent... forfeited" against "late... default time") the cross-encoder moved the right chunk from 5 to 9. On the negation queries the baseline already ranked the right chunk first.
-- **Latency:** baseline retrieval about 5 ms, re-ranking adds about 27 ms, the LLM call about 1.1 s. Running the cross-encoder over all 121 chunks took about 400 ms.
+Nine queries (selected from 40+ candidates to expose failures, so these are examples and not a benchmark):
+
+- **Promoted into the top-3:** the gold chunk entered the top-3 for 6 of 9 queries, for example rank 10 to 1 ("do I always win?"), rank 9 to 1 (negation: "claim a draw after touching a piece") and rank 9 to 2 (synonym: "referee" against "arbiter").
+- **Answers:** for 3 of those queries the baseline answered "Not found in the provided context" and the re-ranked pipeline answered correctly. The baseline failed by omission, not by hallucination.
+- **Where it did not help:** on the synonym query "absent... forfeited" the cross-encoder moved the right chunk from rank 5 to 9. On the scoresheet query the chunk was promoted but both answers were still "Not found".
+- **Latency:** baseline retrieval about 8 ms, re-ranking adds about 28 ms, the LLM call about 0.7 s. Running the cross-encoder over all 121 chunks took about 380 ms.
 
 See `report.pdf` for the full tables and analysis.
 
