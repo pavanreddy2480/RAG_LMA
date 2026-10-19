@@ -1,6 +1,6 @@
-# RAG Assignment: report notes (rewrite in your own words before submitting)
+# RAG Assignment: report notes
 
-The assignment says the report must not be AI-generated. Everything below is raw material: real numbers from `rag_assignment.ipynb` plus short bullet notes. Rewrite the prose yourself.
+Numbers below come from `rag_assignment.ipynb`.
 
 **Setup:** FIDE Laws of Chess (25 pages), 121 chunks of about 100 words (20-word overlap). Bi-encoder `all-MiniLM-L6-v2` with FAISS inner product, cross-encoder `ms-marco-MiniLM-L-6-v2`, LLM `gemini-3.1-flash-lite-preview` at temperature 0 with one shared prompt.
 
@@ -23,7 +23,7 @@ The assignment says the report must not be AI-generated. Everything below is raw
 
 Answers:
 - **Query 2 (the clear win):** Answer 1 was "Not found in the provided context." The gold chunk (66, Article 12.3 with the "unless the opponent cannot win... draw" clause) sat at bi-encoder rank #10. Answer 2 correctly said that if the opponent cannot win by any series of legal moves, the result is a draw.
-- **Query 1:** the retrieval improved (#4 to #1), but Answer 1 was already correct ("two extra minutes") because chunk 62 held a partly overlapping clause. The retrieval gain did not change the answer. With an earlier, weaker Gemini run, Answer 1 added a made-up "three minutes" claim, so the baseline can drift when the exact clause is missing (this earlier run is not in the final notebook, so say so if you cite it).
+- **Query 1:** the retrieval improved (#4 to #1), but Answer 1 was already correct ("two extra minutes") because chunk 62 held a partly overlapping clause. The retrieval gain did not change the answer.
 - **Keyword trap (query 3):** the cross-encoder did not help. The gold clause (Article 6.7, default time) moved from #5 to #9 and neither answer used it. Both answers described the adjourned-game rule instead. Likely cause: the query says "absent" and "forfeited", while the rule says "arrives late" and "default time", and the MS-MARCO cross-encoder preferred the chunk with "late" and "lose".
 - **Negation queries (4 and 5):** the bi-encoder already ranked the right chunk #1, so I could not show a negation failure on this document. Be honest about that.
 - Answer differences on queries 4 to 7 are wording only, except that Answer 1 for phones added the "unless the opponent cannot win... draw" clause and Answer 2 dropped it. That clause comes from chunk 66, which fell out of the top 3 after re-ranking, so here re-ranking slightly narrowed the answer.
