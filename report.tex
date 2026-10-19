@@ -92,4 +92,7 @@ A cross-encoder must run a full transformer pass for every (query, chunk) pair, 
 
 A bi-encoder avoids this: chunk vectors are computed once offline, and a query costs one encoding plus a fast nearest-neighbour search. So the first stage uses the cheap model to get a short list with good recall, and the expensive cross-encoder only refines that short list. The limit of this design is that if the right chunk is not in the top-10, the re-ranker cannot recover it.
 
+\newpage
+\input{appendix}
+
 \end{document}
