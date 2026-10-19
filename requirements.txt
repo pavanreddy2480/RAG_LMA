@@ -1,0 +1,7 @@
+sentence-transformers
+faiss-cpu
+pypdf
+pandas
+google-genai
+nbformat
+jupyter
