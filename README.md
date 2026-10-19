@@ -1,21 +1,26 @@
 # RAG Assignment: Baseline Retrieval vs Cross-Encoder Re-Ranking
 
-Compares two retrieval pipelines over the same chunked PDF (FIDE Laws of Chess, `doc/laws_of_chess.pdf`):
+Compares two retrieval pipelines over the same chunked PDF (FIDE Laws of Chess, `data/laws_of_chess.pdf`):
 
 1. **Baseline:** bi-encoder top-10 -> top-3 chunks -> LLM (Answer 1)
 2. **Re-ranking:** the same top-10 -> cross-encoder re-sort -> top-3 chunks -> LLM (Answer 2)
 
 Both use the same prompt, so any difference in the answers comes from which chunks were retrieved.
 
-## Files
+## Repository layout
 
-| File | Contents |
-|------|----------|
-| `rag_assignment.ipynb` | The full pipeline with outputs: chunking, both pipelines, failure-mode queries, rank shifts, latency |
-| `report.tex`, `report.pdf` | The written report (source and compiled PDF) |
-| `doc/laws_of_chess.pdf` | Source document |
-| `llm_cache.json` | Cached Gemini answers, so the notebook can be rerun without spending API quota |
-| `requirements.txt` | Python dependencies |
+```
+.
+├── rag_assignment.ipynb      # full pipeline with saved outputs
+├── report/
+│   └── RAG_Report.pdf        # the written report
+├── data/
+│   └── laws_of_chess.pdf     # source document (FIDE Laws of Chess)
+├── cache/
+│   └── llm_cache.json        # cached Gemini answers (reruns cost no API quota)
+├── requirements.txt
+└── README.md
+```
 
 ## Setup
 
@@ -45,7 +50,7 @@ Nine queries (selected from 40+ candidates to expose failures, so these are exam
 - **Where it did not help:** on the synonym query "absent... forfeited" the cross-encoder moved the right chunk from rank 5 to 9. On the scoresheet query the chunk was promoted but both answers were still "Not found".
 - **Latency:** baseline retrieval about 8 ms, re-ranking adds about 28 ms, the LLM call about 0.7 s. Running the cross-encoder over all 121 chunks took about 380 ms.
 
-See `report.pdf` for the full tables and analysis.
+See `report/RAG_Report.pdf` for the full tables and analysis.
 
 ## Limitations
 

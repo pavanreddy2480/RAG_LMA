@@ -1,8 +1,10 @@
 .venv/
 __pycache__/
+.ipynb_checkpoints/
 RAG.pdf
-report.aux
-report.log
-report.out
-report.fls
-report.fdb_latexmk
+report_src/
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
